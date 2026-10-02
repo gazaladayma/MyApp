@@ -19,6 +19,7 @@ pipeline {
                 sh '''
                     export JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto.x86_64
                     export PATH=$JAVA_HOME/bin:$PATH
+
                     java -version
                     mvn -version
                     mvn clean package
@@ -33,25 +34,28 @@ pipeline {
         }
 
         stage('Deploy to Tomcat') {
-    steps {
-        step([
-            $class: 'hudson.plugins.deploy.DeployPublisher',
-            adapters: [[
-                $class: 'hudson.plugins.deploy.tomcat.Tomcat9xAdapter',
-                url: 'http://18.212.109.178:8080',
-                credentialsId: 'tomcat-jenkins-credentials',
-                alternativeDeploymentContext: '',
-                path: '/manager/text'
-            ]],
-            war: 'target/myweb-0.0.4.war',
-            contextPath: 'myweb'
-        ])
+            steps {
+                step([
+                    $class: 'hudson.plugins.deploy.DeployPublisher',
+                    adapters: [[
+                        $class: 'hudson.plugins.deploy.tomcat.Tomcat9xAdapter',
+                        url: 'http://18.212.109.178:8080',
+                        credentialsId: 'tomcat-jenkins-credentials',
+                        alternativeDeploymentContext: '',
+                        path: '/manager/text'
+                    ]],
+                    war: 'target/myweb-0.0.4.war',
+                    contextPath: 'myweb'
+                ])
+            }
+        }
     }
-}
+
     post {
         success {
             echo 'CI/CD pipeline completed successfully.'
         }
+
         failure {
             echo 'CI/CD pipeline failed.'
         }
