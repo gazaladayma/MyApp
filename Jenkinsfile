@@ -34,16 +34,17 @@ pipeline {
 
         stage('Deploy to Tomcat') {
             steps {
-                deploy(
+                step([
+                    $class: 'DeployPublisher',
                     adapters: [
                         tomcat9(
-                            url: 'http://18.212.109.178:8080',
+                            url: 'http://18.212.109.178:8080/',
                             credentialsId: 'tomcat-jenkins-credentials'
                         )
                     ],
                     contextPath: 'myweb',
                     war: 'target/myweb-0.0.4.war'
-                )
+                ])
             }
         }
     }
