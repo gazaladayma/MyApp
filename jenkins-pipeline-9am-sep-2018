@@ -2,6 +2,10 @@ pipeline {
 
     agent any
 
+    options {
+        skipDefaultCheckout(true)
+    }
+
     stages {
 
         stage('Checkout') {
@@ -27,8 +31,8 @@ pipeline {
                 deploy(
                     adapters: [
                         tomcat9(
-                            credentialsId: 'tomcat-jenkins-credentials',
-                            url: 'http://18.212.109.178:8080'
+                            url: 'http://18.212.109.178:8080',
+                            credentialsId: 'tomcat-jenkins-credentials'
                         )
                     ],
                     contextPath: 'myweb',
@@ -36,13 +40,13 @@ pipeline {
                 )
             }
         }
-
     }
 
     post {
         success {
             echo 'CI/CD pipeline completed successfully.'
         }
+
         failure {
             echo 'CI/CD pipeline failed.'
         }
