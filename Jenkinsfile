@@ -33,22 +33,21 @@ pipeline {
         }
 
         stage('Deploy to Tomcat') {
-            steps {
-                step([
-                    $class: 'DeployPublisher',
-                    adapters: [
-                        tomcat9(
-                            url: 'http://18.212.109.178:8080/',
-                            credentialsId: 'tomcat-jenkins-credentials'
-                        )
-                    ],
-                    contextPath: 'myweb',
-                    war: 'target/myweb-0.0.4.war'
-                ])
-            }
-        }
+    steps {
+        step([
+            $class: 'hudson.plugins.deploy.DeployPublisher',
+            adapters: [[
+                $class: 'hudson.plugins.deploy.tomcat.Tomcat9xAdapter',
+                url: 'http://18.212.109.178:8080',
+                credentialsId: 'tomcat-jenkins-credentials',
+                alternativeDeploymentContext: '',
+                path: '/manager/text'
+            ]],
+            war: 'target/myweb-0.0.4.war',
+            contextPath: 'myweb'
+        ])
     }
-
+}
     post {
         success {
             echo 'CI/CD pipeline completed successfully.'
