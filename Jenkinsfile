@@ -34,22 +34,21 @@ pipeline {
         }
 
         stage('Deploy to Tomcat') {
-            steps {
-                deploy(
-                    adapters: [
-                        tomcat9(
-                            url: 'http://172.31.47.69:8080',
-                            credentialsId: 'tomcat-jenkins-credentials',
-                            alternativeDeploymentContext: '',
-                            path: '/manager/text'
-                        )
-                    ],
-                    contextPath: 'myweb',
-                    war: 'target/myweb-0.0.4.war'
-                )
-            }
+    steps {
+        withCredentials([usernamePassword(
+            credentialsId: 'tomcat-jenkins-credentials',
+            usernameVariable: 'TOMCAT_USER',
+            passwordVariable: 'TOMCAT_PASSWORD'
+        )]) {
+            sh '''
+                curl --fail --silent --show-error \
+                -u "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+                --upload-file target/myweb-0.0.4.war \
+                "http://172.31.47.69:8080/manager/text/deploy?path=/myweb&update=true"
+            '''
         }
     }
+}
 
     post {
         success {
