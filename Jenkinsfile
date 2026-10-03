@@ -1,3 +1,4 @@
+```groovy
 pipeline {
 
     agent any
@@ -34,21 +35,22 @@ pipeline {
         }
 
         stage('Deploy to Tomcat') {
-    steps {
-        withCredentials([usernamePassword(
-            credentialsId: 'tomcat-jenkins-credentials',
-            usernameVariable: 'TOMCAT_USER',
-            passwordVariable: 'TOMCAT_PASSWORD'
-        )]) {
-            sh '''
-                curl --fail --silent --show-error \
-                -u "$TOMCAT_USER:$TOMCAT_PASSWORD" \
-                --upload-file target/myweb-0.0.4.war \
-                "http://172.31.47.69:8080/manager/text/deploy?path=/myweb&update=true"
-            '''
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'tomcat-jenkins-credentials',
+                    usernameVariable: 'TOMCAT_USER',
+                    passwordVariable: 'TOMCAT_PASSWORD'
+                )]) {
+                    sh '''
+                        curl --fail --silent --show-error \
+                        -u "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+                        --upload-file target/myweb-0.0.4.war \
+                        "http://172.31.47.69:8080/manager/text/deploy?path=/myweb&update=true"
+                    '''
+                }
+            }
         }
     }
-}
 
     post {
         success {
@@ -60,3 +62,4 @@ pipeline {
         }
     }
 }
+```
