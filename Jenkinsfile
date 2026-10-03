@@ -39,7 +39,7 @@ pipeline {
                     $class: 'hudson.plugins.deploy.DeployPublisher',
                     adapters: [[
                         $class: 'hudson.plugins.deploy.tomcat.Tomcat9xAdapter',
-                        url: 'http://18.212.109.178:8080',
+                        url: 'http://172.31.47.69:8080',
                         credentialsId: 'tomcat-jenkins-credentials',
                         alternativeDeploymentContext: '',
                         path: '/manager/text'
