@@ -2,74 +2,75 @@
 
 ## Project Overview
 
-This project demonstrates an end-to-end **CI/CD pipeline** for a Java web application.
+This project demonstrates an end-to-end CI/CD pipeline for a Java web application.
 
-The application source code is stored in GitHub. Jenkins automatically checks out the source code, builds the application using Maven, creates a WAR file, archives the WAR artifact, and deploys the WAR file to an Apache Tomcat server using SSH.
+The application source code is stored in GitHub. A GitHub webhook automatically triggers Jenkins whenever changes are pushed to the repository.
 
-### CI/CD Flow
+Jenkins checks out the latest source code, builds and tests the application using Maven, creates a WAR file, verifies the WAR artifact, and deploys the WAR file to an Apache Tomcat server using the Tomcat Manager API.
+
+The complete process is automated from source-code change to application deployment.
+
+## CI/CD Flow
 
 ```text
 GitHub
    |
+   | Push / Webhook
    v
 Jenkins
    |
    v
-Maven Build
+Checkout
+   |
+   v
+Maven Build & Test
    |
    v
 WAR Artifact
    |
    v
-Jenkins Archive
+Verify WAR
    |
    v
-SSH / SCP
+Tomcat Manager API
    |
    v
 Apache Tomcat
    |
    v
-Running Web Application
+Updated Web Application
 ```
-
----
 
 ## Technologies Used
 
-* **GitHub** – Source code repository
-* **Jenkins** – CI/CD automation
-* **Maven** – Java build and packaging tool
-* **Java 21** – Java development environment
-* **Apache Tomcat 9** – Application server
-* **Amazon EC2** – Jenkins and Tomcat servers
-* **Amazon Elastic IP** – Stable public IP addresses
-* **SSH / SCP** – Secure communication and WAR deployment
-* **Linux** – Server operating system
-
----
+GitHub – Source code repository
+GitHub Webhook – Automatically triggers Jenkins
+Jenkins – CI/CD automation
+Maven – Java build, test and packaging tool
+Java 21 – Java development environment
+Apache Tomcat 9 – Application server
+Amazon EC2 – Server infrastructure
+Linux – Server operating system
+WAR – Java web application package
+Tomcat Manager API – Application deployment
 
 ## GitHub Repository
 
 GitHub repository:
 
-**https://github.com/gazaladayma/MyApp**
+https://github.com/gazaladayma/MyApp
 
-The repository is forked from:
-
-**ARAVINDTrainings/MyApp**
-
----
+The repository contains the Java web application source code and Jenkinsfile.
 
 ## Application Details
 
 The Maven project uses:
 
 ```text
-Group ID:    in.javahome
-Artifact ID: myweb
-Version:     0.0.4
-Packaging:   WAR
+Group ID:     in.javahome
+Artifact ID:  myweb
+Version:      0.0.4
+Packaging:    WAR
 ```
 
 The generated WAR file is:
@@ -84,65 +85,41 @@ The application displays:
 Java Home Web Application!!!!
 ```
 
----
+## Infrastructure
 
-# Infrastructure
+### Jenkins Server
 
-## Jenkins Server
-
-A dedicated Amazon EC2 instance was created for Jenkins.
+A dedicated Amazon EC2 instance was used for Jenkins.
 
 ### Configuration
 
 ```text
-Server Name: Devops-Jenkins-Server
 Operating System: Amazon Linux 2023
-Instance Type: t2.micro
-Java: 21
-Maven: 3.8.4
-Git: 2.50.1
-Jenkins: 2.580.1
-Jenkins Port: 8080
+Java:             21
+Maven:            3.8.4
+Git:              2.50.1
+Jenkins:          2.580.1
+Jenkins Port:     8080
 ```
 
-Jenkins was configured and accessed through:
+Jenkins was accessed through the configured EC2 server address.
 
-```text
-http://3.222.123.234:8080
-```
+### Tomcat Server
 
----
-
-## Tomcat Server
-
-A separate Amazon EC2 instance was created for Apache Tomcat.
+A separate Amazon EC2 instance was used for Apache Tomcat.
 
 ### Configuration
 
 ```text
-Server Name: Devops-Tomcat-Server
 Operating System: Amazon Linux 2023
-Instance Type: t2.micro
-Java: 21
-Tomcat: 9.0.112
-Tomcat Port: 8080
+Java:             21
+Tomcat:           9
+Tomcat Port:      8080
 ```
 
-Tomcat was installed under:
+The application was deployed to Tomcat using the Tomcat Manager API.
 
-```text
-/home/ec2-user/tomcat
-```
-
-The Tomcat application deployment directory is:
-
-```text
-/home/ec2-user/tomcat/webapps/
-```
-
----
-
-# Jenkins Pipeline
+## Jenkins Pipeline
 
 The Jenkins job is:
 
@@ -152,238 +129,328 @@ MyApp-CI-CD
 
 The pipeline contains four stages:
 
-```text
 1. Checkout
-2. Build with Maven
-3. Archive WAR
+2. Build
+3. Verify WAR
 4. Deploy to Tomcat
-```
 
----
+GitHub webhook integration automatically starts the pipeline after a push to the repository.
 
 ## Stage 1 — Checkout
 
-Jenkins checks out the `master` branch from the user's GitHub repository.
+Jenkins retrieves the latest source code from the GitHub repository.
 
 ```groovy
 stage('Checkout') {
     steps {
-        git branch: 'master',
-            url: 'https://github.com/gazaladayma/MyApp.git'
+        checkout scm
     }
 }
 ```
 
----
+The Jenkins pipeline is configured to use the GitHub repository:
 
-## Stage 2 — Build with Maven
+```text
+https://github.com/gazaladayma/MyApp.git
+```
 
-Jenkins uses Java 21 and Maven to build the application.
+## Stage 2 — Build
+
+Jenkins uses Java 21 and Maven to build and test the application.
 
 ```groovy
-stage('Build with Maven') {
+stage('Build') {
     steps {
         sh '''
             export JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto.x86_64
             export PATH=$JAVA_HOME/bin:$PATH
 
-            echo "JAVA_HOME=$JAVA_HOME"
             java -version
-            javac -version
             mvn -version
-
             mvn clean package
         '''
     }
 }
 ```
 
-The Maven build generates:
+The Maven build performs the following:
+
+* Compiles the Java application
+* Runs the unit tests
+* Packages the application as a WAR file
+
+The successful build produced:
+
+```text
+Tests run: 3
+Failures: 0
+Errors: 0
+Skipped: 0
+
+BUILD SUCCESS
+```
+
+The generated WAR file is:
 
 ```text
 target/myweb-0.0.4.war
 ```
 
----
+## Stage 3 — Verify WAR
 
-## Stage 3 — Archive WAR
-
-Jenkins archives the generated WAR file as a build artifact.
+Jenkins verifies that the WAR file was successfully generated.
 
 ```groovy
-stage('Archive WAR') {
+stage('Verify WAR') {
     steps {
-        archiveArtifacts artifacts: 'target/*.war',
-            fingerprint: true
+        sh 'ls -lh target/myweb-0.0.4.war'
     }
 }
 ```
 
-The archived artifact is:
+Example result:
 
 ```text
-myweb-0.0.4.war
+target/myweb-0.0.4.war
 ```
 
----
+The WAR file was successfully created before deployment.
 
 ## Stage 4 — Deploy to Tomcat
 
-Jenkins uses the dedicated SSH key to securely copy the WAR file to the Tomcat server.
+Jenkins securely retrieves the Tomcat credentials from Jenkins Credentials and uses the Tomcat Manager API to deploy the WAR file.
 
 ```groovy
 stage('Deploy to Tomcat') {
     steps {
-        sh '''
-            scp -i /var/lib/jenkins/.ssh/id_ed25519 \
-                -o StrictHostKeyChecking=no \
-                target/*.war \
-                ec2-user@100.57.250.146:/home/ec2-user/tomcat/webapps/
-        '''
+        withCredentials([usernamePassword(
+            credentialsId: 'tomcat-jenkins-credentials',
+            usernameVariable: 'TOMCAT_USER',
+            passwordVariable: 'TOMCAT_PASSWORD'
+        )]) {
+            sh '''
+                curl --fail --silent --show-error \
+                -u "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+                --upload-file target/myweb-0.0.4.war \
+                "http://172.31.47.69:8080/manager/text/deploy?path=/myweb&update=true"
+            '''
+        }
     }
 }
 ```
 
-Tomcat automatically detects the WAR file in the `webapps` directory and extracts it.
+The Tomcat deployment returned:
 
----
+```text
+OK - Deployed application at context path [/myweb]
+```
 
-# Complete Jenkinsfile
+The Tomcat application was then verified as running:
+
+```text
+/myweb:running:0:myweb
+```
+
+## Complete Jenkinsfile
 
 The final Jenkins pipeline used for this project is:
 
 ```groovy
 pipeline {
+
     agent any
 
+    options {
+        skipDefaultCheckout(true)
+    }
+
     stages {
+
         stage('Checkout') {
             steps {
-                git branch: 'master',
-                    url: 'https://github.com/gazaladayma/MyApp.git'
+                checkout scm
             }
         }
 
-        stage('Build with Maven') {
+        stage('Build') {
             steps {
                 sh '''
                     export JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto.x86_64
                     export PATH=$JAVA_HOME/bin:$PATH
 
-                    echo "JAVA_HOME=$JAVA_HOME"
                     java -version
-                    javac -version
                     mvn -version
-
                     mvn clean package
                 '''
             }
         }
 
-        stage('Archive WAR') {
+        stage('Verify WAR') {
             steps {
-                archiveArtifacts artifacts: 'target/*.war',
-                    fingerprint: true
+                sh 'ls -lh target/myweb-0.0.4.war'
             }
         }
 
         stage('Deploy to Tomcat') {
             steps {
-                sh '''
-                    scp -i /var/lib/jenkins/.ssh/id_ed25519 \
-                        -o StrictHostKeyChecking=no \
-                        target/*.war \
-                        ec2-user@100.57.250.146:/home/ec2-user/tomcat/webapps/
-                '''
+                withCredentials([usernamePassword(
+                    credentialsId: 'tomcat-jenkins-credentials',
+                    usernameVariable: 'TOMCAT_USER',
+                    passwordVariable: 'TOMCAT_PASSWORD'
+                )]) {
+                    sh '''
+                        curl --fail --silent --show-error \
+                        -u "$TOMCAT_USER:$TOMCAT_PASSWORD" \
+                        --upload-file target/myweb-0.0.4.war \
+                        "http://172.31.47.69:8080/manager/text/deploy?path=/myweb&update=true"
+                    '''
+                }
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'CI/CD pipeline completed successfully.'
+        }
+
+        failure {
+            echo 'CI/CD pipeline failed.'
         }
     }
 }
 ```
 
----
+## Jenkins Credentials
 
-# SSH Configuration
+The Tomcat username and password are stored securely in Jenkins Credentials.
 
-A dedicated ED25519 SSH key was created on the Jenkins server for Jenkins-to-Tomcat communication.
-
-The private key is stored on the Jenkins server at:
+Credential ID:
 
 ```text
-/var/lib/jenkins/.ssh/id_ed25519
+tomcat-jenkins-credentials
 ```
 
-The corresponding public key was added to the Tomcat server:
+The password is not stored directly in the Jenkinsfile.
+
+Jenkins masks the password in the console output during deployment.
+
+## GitHub Webhook
+
+A GitHub webhook was configured to automatically notify Jenkins when changes are pushed to the repository.
+
+The CI/CD process is therefore:
 
 ```text
-/home/ec2-user/.ssh/authorized_keys
+Developer modifies code
+        |
+        v
+Git commit
+        |
+        v
+Git push
+        |
+        v
+GitHub
+        |
+        | Webhook
+        v
+Jenkins
+        |
+        v
+CI/CD Pipeline
 ```
 
-The Jenkins service account was tested successfully using:
+This removes the need to manually click **Build Now** for every code change.
+
+## Tomcat Deployment
+
+The application is deployed to the Tomcat context:
+
+```text
+/myweb
+```
+
+The deployment was verified using the Tomcat Manager API.
+
+The application was also tested directly from the server using:
 
 ```bash
-sudo -u jenkins ssh \
--i /var/lib/jenkins/.ssh/id_ed25519 \
-ec2-user@100.57.250.146
+curl -i http://172.31.47.69:8080/myweb/
 ```
 
-The connection successfully reached the Tomcat server.
+The response returned the Java web application HTML successfully.
 
----
+## Application Update Test
 
-# Tomcat Deployment
+The CI/CD pipeline was tested using an actual webpage update.
 
-After Jenkins copies the WAR file, Tomcat automatically extracts it.
+### Step 1 — Original Application
 
-The deployed files are:
+The Java web application was running on Tomcat.
+
+### Step 2 — Modify the Webpage
+
+The `index.html` file was updated with new webpage content.
+
+### Step 3 — Commit and Push
+
+The updated code was committed and pushed to GitHub.
+
+### Step 4 — GitHub Webhook
+
+The GitHub push automatically triggered Jenkins.
+
+### Step 5 — Jenkins Pipeline
+
+Jenkins automatically:
+
+* Checked out the updated code
+* Built the application using Maven
+* Ran the tests
+* Created a new WAR file
+* Verified the WAR file
+* Deployed the updated WAR to Tomcat
+
+### Step 6 — Verify Updated Application
+
+The application was refreshed after deployment.
+
+The updated webpage was displayed successfully.
+
+This confirmed that a code change in GitHub automatically reached the running application through the CI/CD pipeline.
+
+## Successful CI/CD Pipeline
+
+The final pipeline flow is:
 
 ```text
-/home/ec2-user/tomcat/webapps/myweb-0.0.4.war
-/home/ec2-user/tomcat/webapps/myweb-0.0.4/
-```
-
-The application context path is:
-
-```text
-/myweb-0.0.4
-```
-
----
-
-# Application URL
-
-The final application is available at:
-
-```text
-http://100.57.250.146:8080/myweb-0.0.4/
-```
-
-The application displays:
-
-```text
-Java Home Web Application!!!!
-```
-
----
-
-# Successful CI/CD Pipeline
-
-Jenkins Build #4 successfully completed all stages:
-
-```text
+GitHub
+     |
+     | Webhook
+     v
+Jenkins
+     |
+     v
 Checkout
      |
      v
-Build with Maven
+Build & Test with Maven
      |
      v
-Archive WAR
+WAR File
      |
      v
-Deploy to Tomcat
+Verify WAR
      |
      v
-Application Running
+Tomcat Manager API
+     |
+     v
+Apache Tomcat
+     |
+     v
+Updated Web Application
 ```
 
 Build result:
@@ -392,11 +459,9 @@ Build result:
 Finished: SUCCESS
 ```
 
-The WAR file was successfully copied to the Tomcat server and deployed.
+The WAR file was successfully built and deployed to Apache Tomcat.
 
----
-
-# Project Evidence
+## Project Evidence
 
 The following screenshots document the project setup, build, deployment, and final result.
 
@@ -422,7 +487,6 @@ The following screenshots document the project setup, build, deployment, and fin
 ```text
 14_EC2_Jenkins_Server_Configuration.png
 15_EC2_Jenkins_Server_Running.png
-16_Elastic_IP_Associated.png
 18_Jenkins_Server_Java_Installed.png
 19_Jenkins_Server_Git_Installed.png
 20_Jenkins_Server_Maven_Installed.png
@@ -449,10 +513,7 @@ The following screenshots document the project setup, build, deployment, and fin
 
 ```text
 29_EC2_Tomcat_Server_Running.png
-30_Elastic_IP_Associated_Tomcat.png
-31_Tomcat_Server_Updated.png
 32_Tomcat_Server_Java_21_Installed.png
-33_Tomcat_Extracted.png
 34_Tomcat_Server_Started.png
 35_Tomcat_Welcome_Page.png
 36_Tomcat_Webapps_Directory.png
@@ -462,28 +523,54 @@ The following screenshots document the project setup, build, deployment, and fin
 47_Final_CI_CD_Application.png
 ```
 
-### Jenkins-to-Tomcat Deployment
+### Jenkins / Tomcat Deployment
 
 ```text
-37_Tomcat_Jenkins_SSH_Key.png
-38_Jenkins_To_Tomcat_SSH_Test.png
-40_Jenkins_User_To_Tomcat_SSH.png
-42_WAR_Copied_To_Tomcat.png
-46_Tomcat_WAR_Automatic_Deployment.png
+45_Jenkins_CI_CD_Deployment_Success.png
+43_Tomcat_WAR_Deployed.png
+44_Tomcat_Application_Running.png
+47_Final_CI_CD_Application.png
 ```
 
----
+### GitHub Webhook / Application Update
 
-# How to Reproduce the Project
+The final demonstration should show:
 
-## 1. Clone the repository
+```text
+GitHub index.html updated
+        |
+        v
+Git push
+        |
+        v
+GitHub Webhook
+        |
+        v
+Jenkins automatically triggered
+        |
+        v
+Build & Test
+        |
+        v
+WAR created
+        |
+        v
+Tomcat deployment
+        |
+        v
+Updated webpage
+```
+
+## How to Reproduce the Project
+
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/gazaladayma/MyApp.git
 cd MyApp
 ```
 
-## 2. Build the application locally
+### 2. Build the Application Locally
 
 Make sure Java 21 and Maven are installed.
 
@@ -499,7 +586,7 @@ The WAR file will be generated under:
 target/myweb-0.0.4.war
 ```
 
-## 3. Configure Jenkins
+### 3. Configure Jenkins
 
 Create a Jenkins Pipeline job named:
 
@@ -507,9 +594,11 @@ Create a Jenkins Pipeline job named:
 MyApp-CI-CD
 ```
 
-Configure the pipeline using the Jenkinsfile in this project.
+Configure the pipeline to use the Jenkinsfile in the repository.
 
-## 4. Configure Tomcat
+Configure the GitHub webhook so that a push to the repository triggers Jenkins.
+
+### 4. Configure Tomcat
 
 Install Java 21 and Apache Tomcat 9 on the Tomcat server.
 
@@ -520,55 +609,61 @@ cd ~/tomcat
 ./bin/startup.sh
 ```
 
-Verify port 8080:
+Verify that Tomcat is listening on port 8080:
 
 ```bash
 ss -lntp | grep 8080
 ```
 
-## 5. Configure SSH
+### 5. Configure Tomcat Credentials
 
-Create an SSH key on the Jenkins server and add the public key to the Tomcat server's:
+Create a Tomcat user with access to the Tomcat Manager application.
+
+Store the username and password in Jenkins Credentials using:
 
 ```text
-~/.ssh/authorized_keys
+tomcat-jenkins-credentials
 ```
 
-Test the connection:
+### 6. Run the CI/CD Pipeline
+
+Make a change to the application and push it to GitHub:
 
 ```bash
-sudo -u jenkins ssh \
--i /var/lib/jenkins/.ssh/id_ed25519 \
-ec2-user@<TOMCAT_IP>
+git add .
+git commit -m "Update web page"
+git push origin main
 ```
 
-## 6. Run Jenkins
-
-Click:
-
-```text
-MyApp-CI-CD → Build Now
-```
+The GitHub webhook automatically triggers Jenkins.
 
 Jenkins will:
 
-1. Checkout the GitHub repository.
+1. Checkout the latest code.
 2. Build the application with Maven.
-3. Generate the WAR file.
-4. Archive the WAR artifact.
-5. Copy the WAR to Tomcat.
+3. Run the tests.
+4. Generate the WAR file.
+5. Verify the WAR file.
+6. Deploy the WAR to Tomcat.
+7. Complete the pipeline.
 
-## 7. Verify the application
+### 7. Verify the Application
 
-Open:
+The application context is:
 
 ```text
-http://<TOMCAT_IP>:8080/myweb-0.0.4/
+/myweb
 ```
 
----
+The application can be verified from the Tomcat server using:
 
-# Result
+```bash
+curl http://172.31.47.69:8080/myweb/
+```
+
+The updated webpage should be displayed after the deployment completes.
+
+## Result
 
 The project successfully demonstrates an automated CI/CD workflow:
 
@@ -578,26 +673,38 @@ Developer
     v
 GitHub Repository
     |
+    | Webhook
     v
 Jenkins
     |
     +----> Checkout
     |
-    +----> Maven Build
+    +----> Maven Build & Test
     |
-    +----> WAR Artifact
+    +----> WAR File
     |
-    +----> Archive Artifact
+    +----> Verify WAR
     |
-    +----> SSH/SCP Deployment
+    +----> Tomcat Deployment
               |
               v
         Apache Tomcat
               |
               v
-       Java Web Application
+      Updated Web Application
 ```
 
-**Final Result: Jenkins Build #4 — SUCCESS**
+## Final Result
 
-The Java web application was successfully built, packaged as a WAR, automatically deployed to Apache Tomcat, and accessed through the web browser.
+The Java web application was successfully:
+
+* Stored in GitHub
+* Automatically detected through a GitHub webhook
+* Checked out by Jenkins
+* Built and tested using Maven
+* Packaged as a WAR file
+* Verified by Jenkins
+* Deployed to Apache Tomcat
+* Updated automatically after a GitHub code change
+
+**The complete CI/CD workflow successfully demonstrated automatic deployment from GitHub to a running Tomcat application.**
