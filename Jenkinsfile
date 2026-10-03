@@ -34,20 +34,20 @@ pipeline {
         }
 
         stage('Deploy to Tomcat') {
-            steps {
-                step([
-                    $class: 'hudson.plugins.deploy.DeployPublisher',
-                    adapters: [[
-                        $class: 'hudson.plugins.deploy.tomcat.Tomcat9xAdapter',
-                        url: 'http://172.31.47.69:8080',
+    steps {
+        script {
+            deploy(
+                adapters: [
+                    tomcat9(
                         credentialsId: 'tomcat-jenkins-credentials',
-                        alternativeDeploymentContext: '',
-                        path: '/manager/text'
-                    ]],
-                    war: 'target/myweb-0.0.4.war',
-                    contextPath: 'myweb'
-                ])
-            }
+                        path: '',
+                        url: 'http://172.31.47.69:8080'
+                    )
+                ],
+                contextPath: 'myweb',
+                onFailure: false,
+                war: 'target/myweb-0.0.4.war'
+            )
         }
     }
 
